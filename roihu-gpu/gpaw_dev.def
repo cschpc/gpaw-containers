@@ -1,0 +1,30 @@
+Bootstrap: localimage
+From: gpaw_deps.sif
+
+%post
+    . /opt/activate.sh
+    ml gcc/15.2.0
+    ml cuda/13.0.2
+    ml openmpi/5.0.10
+
+    source /spack/share/spack/setup-env.sh
+    upstream=g15cu131_eg
+    spack env activate environments/gpaw_deps_${upstream}
+
+    # Venv inherits Numpy etc from spack env
+    python3 -m venv --system-site-packages /opt/gpaw-dev-venv
+    /opt/gpaw-dev-venv/bin/pip install --upgrade pip
+    /opt/gpaw-dev-venv/bin/pip install \
+        ase        \
+        mpi4py     \
+        pytest     \
+        pytest-xdist
+
+    # GPAW itself is not installed here — mount source at runtime and build in-place:
+    #   apptainer exec --bind /path/to/gpaw:/gpaw gpaw_dev.sif pip install -e /gpaw
+
+%environment
+    source /opt/gpaw-dev-venv/bin/activate
+
+%runscript
+    exec "$@"

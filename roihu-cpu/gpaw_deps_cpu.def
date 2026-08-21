@@ -1,0 +1,60 @@
+Bootstrap: docker
+From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
+%post
+    # Activate module environment and load default modules from the base container
+    . /opt/activate.sh
+
+    mkdir -p /users
+
+    # Spack prerequisites
+    dnf install --assumeyes epel-release
+    dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd
+
+    # install spack
+    git clone --depth 1 --branch v1.2.2 https://github.com/spack/spack.git
+    . spack/share/spack/setup-env.sh
+
+    # Create a spack environment and make it aware of packages installed in the base container
+    source spack/share/spack/setup-env.sh
+    source spack/share/spack/bash/spack-completion.bash
+    upstream=gcc152_ec
+    spack env create environments/gpaw_deps
+    spack env activate -p environments/gpaw_deps
+
+    spack config add upstreams:${upstream}:install_tree:/appl/soft/spack/core/v2026_03/x86_64/${upstream}/install_dir
+    spack config add config:install_tree:root:$PWD/gpaw_deps-install
+    spack config add config:source_cache:source-cache
+    spack config add 'config:install_tree:projections:all:"{name}-{version}-{hash:7}"'
+
+    # generate Lmod modules, but only for our explicit installs
+    spack config add modules:default:enable:lmod
+    spack config add modules:default:lmod:core_compilers:[gcc@15.2.0]
+    spack config add modules:default:lmod:hash_length:0
+    spack config add modules:default:lmod:exclude_implicits:true
+
+    # Ensure we build everything for zen5 instead of some generic x86_64 arch.
+    # Spack seems to not realize its running on zen5 (container?) so we also set host_compatible=false
+    spack config add packages:all:require:"target=zen5"
+    spack config add concretizer:targets:host_compatible:false
+
+    # get most up-to-date spack packages repo
+    git clone --depth 1 https://github.com/spack/spack-packages.git
+
+    spack repo add /spack-packages/repos/spack_repo/builtin
+
+    spack add libxc@7.1.2+fhc
+    spack add python@3.14.5
+    spack add py-numpy@2.5.1
+    spack add py-scipy@1.17.1
+    # TODO libvdwxc
+
+    spack concretize
+    spack install
+
+    spack env activate --sh environments/gpaw_deps > environments/gpaw_deps/env_activate_cmds.sh
+
+%environment
+    . /opt/activate.sh
+
+%runscript
+    exec "$@"
