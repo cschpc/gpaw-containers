@@ -17,7 +17,7 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
     # Spack prerequisites
     dnf install --assumeyes epel-release
-    # TODO remove 'which' from this list. For now, GPAW build kinda assumes it is available
+    # GPAW build kinda assumes 'which' to be available so we install it, too
     dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd which
 
     # Use the same (or almost same) version of spack and spack-packages as used when the Roihu stack was built.
@@ -57,6 +57,8 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     spack add python@3.14.3 ^tk+xft+xss
     spack add py-numpy@2.4.3
     spack add py-scipy@1.17.1
+    # GPAW tests have a bug that is incompatible with pytest >=9.1. Fixed in newer GPAW versions
+    spack add py-pytest@9.0.2
 
     # elpa@2025.06.001 was apparently bad, so we fetch newer recipes. https://gitlab.com/gpaw/gpaw/-/merge_requests/3226
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/elpa
