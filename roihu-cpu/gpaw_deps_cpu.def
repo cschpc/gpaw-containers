@@ -1,6 +1,10 @@
 Bootstrap: docker
 From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
+%arguments
+    # Where the spack view will be created. Keep in sync with config/spack.yaml
+    VIEW_DIR=/views/gpaw_deps
+
 %files
     # Container is rocky9 but we treat it as rhel9: let's Spack do better job at reusing upstream packages. OK because these are ABI compatible
     config/rhel9-os-release /etc/os-release
@@ -68,22 +72,29 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     cd /
 
     # Concretize and install, storing logs
-    export LOG_DIR=/var/log/gpaw_deps_logs
+    export LOG_DIR=/environments/gpaw_deps/logs
     mkdir -p $LOG_DIR
     spack concretize -f 2>&1 | tee $LOG_DIR/spack-concretize.log
     spack find -v --long --show-full-compiler > $LOG_DIR/spack-concretized-specs.txt
     spack find --long | tee $LOG_DIR/spack-find.log
 
-    spack install --log-format=cdash --log-file=$LOG_DIR/install
+    spack install --log-format=junit --log-file=$LOG_DIR/install.log --show-log-on-error --fail-fast
 
     # Cleanup
     #rm -rf /spack-packages
 
-    spack env activate --sh environments/gpaw_deps > environments/gpaw_deps/env_activate_cmds.sh
-
 %environment
     # Activate module environment and load default modules from the base container
     . /opt/activate.sh
+
+    export PATH={{ VIEW_DIR }}/bin:$PATH
+    export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH
+    export CPATH={{ VIEW_DIR }}/include:$CPATH
+    export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH
+    export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH
+
+    # Setting this seems to help pip recognize existing packages
+    export PYTHONPATH={{ VIEW_DIR }}/lib/python3.14/site-packages:$PYTHONPATH
 
 %runscript
     exec "$@"

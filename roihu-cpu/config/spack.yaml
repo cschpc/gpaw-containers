@@ -1,0 +1,93 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+
+  config:
+    install_tree:
+      # will install relative to the env
+      root: gpaw_deps-install
+      projections:
+        all: '{name}-{version}-{hash:7}'
+
+  view:
+    default:
+      root: /views/gpaw_deps
+      link: all
+      link_type: symlink
+
+  specs:
+    # Add core deps to the environment. These should come from upstream directly.
+    # Listing them here is not strictly necessary but should help Spack reuse them when concretizing
+    - openblas@0.3.30/qskucw
+    - openmpi@5.0.10/jtu4ml
+    - fftw@3.3.10/gafrwz
+    - netlib-scalapack@2.2.2/stnq2q
+
+  concretizer:
+    reuse: true
+    unify: when_possible
+    duplicates:
+      strategy: minimal
+    targets:
+      host_compatible: false
+
+  packages:
+    all:
+      prefer:
+      # Cannot require zen5 since the compiler-wrapper itself is built for generic x86-64
+      - target=zen5
+      - '%gcc@15.2.0'
+      - +openmp
+
+    gcc:
+      buildable: false
+      externals:
+      # Spack's automatic compiler detection doesn't get gcc spec right (misses jit). So configure it here exactly as it appears in upstream spack.yaml
+      - spec: gcc@15.2.0+binutils languages=c,c++,fortran,jit
+        prefix: /appl/soft/spack/core/v2026_03/x86_64/compilers_ec/install_dir/zen5/gcc-14.1.0/gcc-15.2.0-cxeacg
+        extra_attributes:
+          compilers:
+            c: /appl/soft/spack/core/v2026_03/x86_64/compilers_ec/install_dir/zen5/gcc-14.1.0/gcc-15.2.0-cxeacg/bin/gcc
+            cxx: /appl/soft/spack/core/v2026_03/x86_64/compilers_ec/install_dir/zen5/gcc-14.1.0/gcc-15.2.0-cxeacg/bin/g++
+            fortran: /appl/soft/spack/core/v2026_03/x86_64/compilers_ec/install_dir/zen5/gcc-14.1.0/gcc-15.2.0-cxeacg/bin/gfortran
+
+    # Package config for packages that we absolutely want to reuse from upstream
+    mpi:
+      buildable: false
+    openmpi:
+      buildable: false
+      externals:
+      - spec: openmpi@5.0.10
+        prefix: /appl/soft/spack/core/v2026_03/x86_64/gcc152_ec/install_dir/zen5/gcc-15.2.0/openmpi@5.0.10-jtu4ml
+    blas:
+      buildable: false
+    openblas:
+      buildable: false
+      require:
+      - openblas@0.3.30/qskucw
+    lapack:
+      buildable: false
+    scalapack:
+      buildable: false
+    fftw-api:
+      buildable: false
+    fftw:
+      buildable: false
+      externals:
+      - spec: fftw@3.3.10+openmp
+        prefix: /appl/soft/spack/core/v2026_03/x86_64/gcc152_ec/install_dir/zen5/gcc-15.2.0/fftw@3.3.10-gafrwz
+
+    knem:
+      buildable: false
+      externals:
+      - spec: knem@1.1.4 %c=gcc@15.2.0
+        prefix: /opt/knem-1.1.4.90mlnx4
+
+    git:
+      # Use system git. git Spack recipe has pcre2 as dependency which doesn't build properly (recipe omits build deps)
+      buildable: false
+      externals:
+      - spec: git@2.52.0
+        prefix: /usr
