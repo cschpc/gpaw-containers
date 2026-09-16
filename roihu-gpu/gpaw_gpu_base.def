@@ -1,0 +1,96 @@
+# Installs most dependencies needed for GPAW using Spack
+
+Bootstrap: docker
+From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_03
+
+# This recipe has a lot in common with roihu_cpu.def. See there for detailed comments
+
+%arguments
+    # Where the spack view will be created. Keep in sync with config/spack.yaml
+    VIEW_DIR=/opt/views/gpaw_deps
+
+%files
+    config/rhel9-os-release /etc/os-release
+    config/spack.yaml /opt/gpaw_deps_config/spack.yaml
+
+%post
+    mkdir -p /users
+
+    # Spack prerequisites
+    dnf install --assumeyes epel-release
+    dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd which
+    # Some spack recipes fail to build without these (but don't specify them as dependencies, so spack fails to install them)
+    dnf install --assumeyes autoconf libtool automake
+
+    cd /opt
+    git clone --depth 1 -b csc/v1.1 https://github.com/CSCfi/spack.git
+    . spack/share/spack/setup-env.sh
+
+    source spack/share/spack/setup-env.sh
+    source spack/share/spack/bash/spack-completion.bash
+    upstream=g15cu131_eg
+    spack env create /opt/environments/gpaw_deps /opt/gpaw_deps_config/spack.yaml
+    spack env activate -p /opt/environments/gpaw_deps
+
+    spack config add upstreams:${upstream}:install_tree:/appl/soft/spack/core/v2026_03/aarch64/${upstream}/install_dir
+    spack config add config:source_cache:source-cache
+
+    git clone -b csc/v2026.03 --depth 1 https://github.com/CSCfi/spack-packages.git
+    spack repo add spack-packages/repos/spack_repo/builtin
+
+    # Fetch newest upstream package repo
+    cd spack-packages
+    git remote add upstream https://github.com/spack/spack-packages.git
+    git fetch upstream develop --depth=1
+
+    # Some recipes need pkgconfig which spack may try to install and fail because its recipe is configured badly.
+    # No idea why this seems to only fail occasionally.
+    # Prevent by using external pkgconfig.
+    spack external find pkgconf pkg-config
+
+    # Add packages, fetching newest recipes from spack-packages repo when needed.
+
+    git checkout upstream/develop -- repos/spack_repo/builtin/packages/libxc
+    spack add libxc@7.1.2+fhc
+    spack add libvdwxc@0.5.0+mpi
+    # Python with tkinter
+    spack add python@3.14.3 ^tk+xft+xss
+    spack add py-numpy@2.4.3
+    spack add py-scipy@1.17.1
+    # GPAW tests have a bug that is incompatible with pytest >=9.1. Fixed in newer GPAW versions
+    spack add py-pytest@9.0.2
+
+    # elpa@2025.06.001 was apparently bad, so we fetch newer recipes. https://gitlab.com/gpaw/gpaw/-/merge_requests/3226
+    git checkout upstream/develop -- repos/spack_repo/builtin/packages/elpa
+    spack add elpa@2026.02.002 +mpi
+
+    # CuPy seems very tricky to install via Spack. We get it with pip in the followup container
+
+    # Concretize and install, storing logs
+    export LOG_DIR=/opt/environments/gpaw_deps/logs
+    mkdir -p $LOG_DIR
+    spack concretize -f 2>&1 | tee $LOG_DIR/spack-concretize.log
+    spack find -v --long --show-full-compiler > $LOG_DIR/spack-concretized-specs.txt
+    spack find --long | tee $LOG_DIR/spack-find.log
+
+    spack install --log-format=junit --log-file=$LOG_DIR/install.log --show-log-on-error --fail-fast
+    cd /
+
+    # Write the env setup to a plain script that the %environment block can load.
+    # We want to avoid loading the spack env directly (slow!). Instead, set relevant vars point to the spack view
+    ENV_SCRIPT=/opt/gpaw_deps_env.sh
+    echo '# Activate module environment and load default modules' > $ENV_SCRIPT
+    echo '. /opt/activate.sh' >> $ENV_SCRIPT
+    echo 'export PATH={{ VIEW_DIR }}/bin:$PATH' >> $ENV_SCRIPT
+    echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
+    echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT
+    echo 'export CPATH={{ VIEW_DIR }}/include:$CPATH' >> $ENV_SCRIPT
+    echo 'export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH' >> $ENV_SCRIPT
+    echo 'export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH' >> $ENV_SCRIPT
+    echo 'export PYTHONPATH={{ VIEW_DIR }}/lib/python3.14/site-packages:$PYTHONPATH' >> $ENV_SCRIPT
+
+%environment
+    . /opt/gpaw_deps_env.sh
+
+%runscript
+    exec "$@"

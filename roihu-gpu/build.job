@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH --job-name=build_container
+#SBATCH --account=project_2002078
+#SBATCH --partition=gpumedium
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1 --cpus-per-task=72  # The product should be 72 if requesting 1 GPU per node
+#SBATCH --gres=gpu:gh200:1  # Corresponds to 1 GPU per node
+
+export APPTAINER_CACHEDIR=$TMPDIR
+apptainer build --force --bind="$TMPDIR:/tmp" --fakeroot gpaw_gpu_base.sif gpaw_gpu_base.def
+apptainer build --force --bind="$TMPDIR:/tmp" --fakeroot gpaw_gpu.sif gpaw_gpu_pip.def

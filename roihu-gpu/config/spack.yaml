@@ -1,0 +1,88 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+
+  config:
+    install_tree:
+      # will install relative to the env
+      root: gpaw_deps-install
+      projections:
+        all: '{name}-{version}-{hash:7}'
+
+  view:
+    default:
+      root: /opt/views/gpaw_deps
+      link: all
+      link_type: symlink
+
+  specs:
+    # Add core deps to the environment. These should come from upstream directly.
+    # Listing them here is not strictly necessary but should help Spack reuse them when concretizing
+    - openblas@0.3.30/kgwjyg
+    - openmpi@5.0.10/dzell4
+    - fftw@3.3.10/qhazdi
+    - netlib-lapack@3.12.1/34ouub
+    - netlib-scalapack@2.2.2/ytkkdv
+
+  concretizer:
+    reuse: true
+    unify: when_possible
+    duplicates:
+      strategy: minimal
+    targets:
+      host_compatible: false
+
+  packages:
+    all:
+      prefer:
+      - target=neoverse_v2
+      - '%gcc@15.2.0'
+      - +openmp
+      - ^cuda/lk75vgq
+      - ^cudnn/zy4lml
+
+    gcc:
+      buildable: false
+      externals:
+      - spec: gcc@15.2.0+binutils languages:='c,c++,fortran,jit'
+        prefix: /appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/gcc-15.2.0-p2c2mm
+        extra_attributes:
+          compilers:
+            c: /appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/gcc-15.2.0-p2c2mm/bin/gcc
+            cxx: /appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/gcc-15.2.0-p2c2mm/bin/g++
+            fortran: /appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/gcc-15.2.0-p2c2mm/bin/gfortran
+
+    # # Package config for packages that we absolutely want to reuse from upstream
+    knem:
+      buildable: false
+      externals:
+      - spec: knem@1.1.4 %c=gcc@15.2.0
+        prefix: /opt/knem-1.1.4.90mlnx4
+    git:
+      buildable: false
+      externals:
+      - spec: git@2.52.0
+        prefix: /usr
+
+    mpi:
+      buildable: false
+    openmpi:
+      buildable: false
+    blas:
+      buildable: false
+    openblas:
+      buildable: false
+    lapack:
+      buildable: false
+    scalapack:
+      buildable: false
+    fftw-api:
+      buildable: false
+    fftw:
+      buildable: false
+    cuda:
+      buildable: false
+    nccl:
+      buildable: false

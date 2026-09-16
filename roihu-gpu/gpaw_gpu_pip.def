@@ -1,0 +1,36 @@
+# Installs some Python packages that are hard to get with Spack, and finally install GPAW
+
+Bootstrap: localimage
+From: gpaw_gpu_base.sif
+
+%files
+    config/gpaw_gpu_siteconfig.py /opt/gpaw_deps_config/siteconfig.py
+
+%post
+    . /opt/gpaw_deps_env.sh
+
+    cd /opt
+
+    python -m ensurepip --upgrade
+    python -m pip install setuptools packaging --upgrade
+
+    python -m pip install cupy-cuda13x==14.1.1
+
+    # install ASE and GPAW and any additional deps for them
+    python -m pip install pybind11==3.0.1
+    python -m pip install ase==3.29.0
+
+    git clone --depth=1 --branch 26.7.0 https://gitlab.com/gpaw/gpaw.git
+    export GPAW_CONFIG=/opt/gpaw_deps_config/siteconfig.py
+    cd gpaw
+    python -m pip install -v . --no-build-isolation
+    cd ..
+
+    # cleanup
+    rm -rf /opt/gpaw
+
+%environment
+    . /opt/gpaw_deps_env.sh
+
+%runscript
+    exec "$@"
