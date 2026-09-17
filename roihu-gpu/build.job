@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=build_container
+#SBATCH --job-name=build_gpu_container
 #SBATCH --account=project_2002078
 #SBATCH --partition=gpumedium
 #SBATCH --time=02:00:00
