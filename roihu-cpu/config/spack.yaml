@@ -13,7 +13,7 @@ spack:
 
   view:
     default:
-      root: /views/gpaw_deps
+      root: /opt/views/gpaw_deps
       link: all
       link_type: symlink
 

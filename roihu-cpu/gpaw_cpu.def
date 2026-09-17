@@ -3,7 +3,7 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
 %arguments
     # Where the spack view will be created. Keep in sync with config/spack.yaml
-    VIEW_DIR=/views/gpaw_deps
+    VIEW_DIR=/opt/views/gpaw_deps
 
 %files
     # Container is rocky9 but we treat it as rhel9: let's Spack do better job at reusing upstream packages. OK because these are ABI compatible
@@ -20,6 +20,7 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     # GPAW build kinda assumes 'which' to be available so we install it, too
     dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd which
 
+    cd /opt
     # Use the same (or almost same) version of spack and spack-packages as used when the Roihu stack was built.
     # Otherwise can run in nasty issues where Spack would install a separate GCC runtime due to eg. compiler-wrapper version being different.
     git clone --depth 1 -b csc/v1.1 https://github.com/CSCfi/spack.git
@@ -29,20 +30,22 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     source spack/share/spack/setup-env.sh
     source spack/share/spack/bash/spack-completion.bash
     upstream=gcc152_ec
-    spack env create environments/gpaw_deps /opt/gpaw_deps_config/spack.yaml
-    spack env activate -p environments/gpaw_deps
+    spack env create /opt/environments/gpaw_deps /opt/gpaw_deps_config/spack.yaml
+    spack env activate -p /opt/environments/gpaw_deps
 
     spack config add upstreams:${upstream}:install_tree:/appl/soft/spack/core/v2026_03/x86_64/${upstream}/install_dir
     spack config add config:source_cache:source-cache
+
+    spack external find pkgconf pkg-config
 
     # Take the same version of spack-packages as on Roihu (or at least not too different).
     # This won't have all newest recipes for some deps that we want; will fetch those individually later (and fight the concretizer until they build cleanly)
     git clone -b csc/v2026.03 --depth 1 https://github.com/CSCfi/spack-packages.git
 
-    spack repo add /spack-packages/repos/spack_repo/builtin
+    spack repo add /opt/spack-packages/repos/spack_repo/builtin
 
     # Fetch newest upstream package repo
-    cd /spack-packages
+    cd spack-packages
     git remote add upstream https://github.com/spack/spack-packages.git
     git fetch upstream develop --depth=1
 
@@ -71,10 +74,10 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     cp /opt/gpaw_deps_config/gpaw_spack_package.py repos/spack_repo/builtin/packages/py_gpaw/package.py
     spack add py-gpaw@26.7.0 +mpi+openmp+fftw+libvdwxc+scalapack+elpa
 
-    cd /
+    cd /opt
 
     # Concretize and install, storing logs
-    export LOG_DIR=/environments/gpaw_deps/logs
+    export LOG_DIR=/opt/environments/gpaw_deps/logs
     mkdir -p $LOG_DIR
     spack concretize -f 2>&1 | tee $LOG_DIR/spack-concretize.log
     spack find -v --long --show-full-compiler > $LOG_DIR/spack-concretized-specs.txt
@@ -85,18 +88,21 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     # Cleanup
     #rm -rf /spack-packages
 
+    # Write the env setup to a plain script that the %environment block can load.
+    # We want to avoid loading the spack env directly (slow!). Instead, set relevant vars point to the spack view
+    ENV_SCRIPT=/opt/gpaw_deps_env.sh
+    echo '# Activate module environment and load default modules' > $ENV_SCRIPT
+    echo '. /opt/activate.sh' >> $ENV_SCRIPT
+    echo 'export PATH={{ VIEW_DIR }}/bin:$PATH' >> $ENV_SCRIPT
+    echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
+    echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT
+    echo 'export CPATH={{ VIEW_DIR }}/include:$CPATH' >> $ENV_SCRIPT
+    echo 'export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH' >> $ENV_SCRIPT
+    echo 'export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH' >> $ENV_SCRIPT
+    echo 'export PYTHONPATH={{ VIEW_DIR }}/lib/python3.14/site-packages:$PYTHONPATH' >> $ENV_SCRIPT
+
 %environment
-    # Activate module environment and load default modules from the base container
-    . /opt/activate.sh
-
-    export PATH={{ VIEW_DIR }}/bin:$PATH
-    export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH
-    export CPATH={{ VIEW_DIR }}/include:$CPATH
-    export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH
-    export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH
-
-    # Setting this seems to help pip recognize existing packages
-    export PYTHONPATH={{ VIEW_DIR }}/lib/python3.14/site-packages:$PYTHONPATH
+    . /opt/gpaw_deps_env.sh
 
 %runscript
     exec "$@"
