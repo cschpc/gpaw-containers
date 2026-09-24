@@ -50,9 +50,12 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
 
     # Add packages, fetching newest recipes from spack-packages repo when needed.
 
+    # GPU-aware libxc
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/libxc
-    spack add libxc@7.1.2+fhc
+    spack add libxc@7.1.2+fhc+cuda cuda_arch=90a ~fortran
+
     spack add libvdwxc@0.5.0+mpi
+
     # Python with tkinter
     spack add python@3.14.3 ^tk+xft+xss
     spack add py-numpy@2.4.3
