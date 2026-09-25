@@ -18,7 +18,7 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
 
     # Spack prerequisites
     dnf install --assumeyes epel-release
-    dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd which
+    dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd gdb which
     # Some spack recipes fail to build without these (but don't specify them as dependencies, so spack fails to install them)
     dnf install --assumeyes autoconf libtool automake
 
