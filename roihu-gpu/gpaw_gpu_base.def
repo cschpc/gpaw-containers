@@ -57,11 +57,11 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     spack add libvdwxc@0.5.0+mpi
 
     # Python with tkinter
-    spack add python@3.14.3 ^tk+xft+xss
-    spack add py-numpy@2.4.3
-    spack add py-scipy@1.17.1
+    spack add python@3.14 ^tk+xft+xss
+    spack add py-numpy@2.4
+    spack add py-scipy@1.17
     # GPAW tests have a bug that is incompatible with pytest >=9.1. Fixed in newer GPAW versions
-    spack add py-pytest@9.0.2
+    spack add py-pytest@9.0
 
     # elpa@2025.06.001 was apparently bad, so we fetch newer recipes. https://gitlab.com/gpaw/gpaw/-/merge_requests/3226
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/elpa
