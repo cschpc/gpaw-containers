@@ -3,7 +3,7 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
 %arguments
     # Where the spack view will be created. Keep in sync with config/spack.yaml
-    VIEW_DIR=/opt/views/gpaw_deps
+    VIEW_DIR=/opt/gpaw_container_view
 
 %files
     # Container is rocky9 but we treat it as rhel9: let's Spack do better job at reusing upstream packages. OK because these are ABI compatible
@@ -70,6 +70,9 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     # Get newest ASE recipe. GPAW 26.7 needs ASE 3.29
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/py_ase
     spack add py-ase@3.29.0
+    # ASE provides wrappers for dftd3/dftd4 but doesn't install them for you
+    spack add dftd3-lib@0.10
+    spack add dftd4@3.7.0 ^python@3.14
     # Get custom package.py for GPAW. Patched manually by LN
     cp /opt/gpaw_deps_config/gpaw_spack_package.py repos/spack_repo/builtin/packages/py_gpaw/package.py
     spack add py-gpaw@26.7.0 +mpi+openmp+fftw+libvdwxc+scalapack+elpa
@@ -84,6 +87,18 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     spack find --long | tee $LOG_DIR/spack-find.log
 
     spack install --log-format=junit --log-file=$LOG_DIR/install.log --show-log-on-error --fail-fast
+
+    # Get pip and update it to a safe version, then get safe version of certifi. This is a patch for compromised eMudhra certificates,
+    # https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576.
+    # Can be removed in the future once ensurepip starts giving a safe version out of the box
+    python -m ensurepip
+    python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+    python -m pip install --upgrade certifi
+    # Should be pip >= 26.2.2, certifi >= 2026.10.19
+    python -m pip --version
+    python -m pip list | grep certifi
+
+    python -m pip install setuptools packaging --upgrade
 
     # Cleanup
     #rm -rf /spack-packages
@@ -100,6 +115,15 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     echo 'export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH' >> $ENV_SCRIPT
     echo 'export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH' >> $ENV_SCRIPT
     echo 'export PYTHONPATH={{ VIEW_DIR }}/lib/python3.14/site-packages:$PYTHONPATH' >> $ENV_SCRIPT
+
+    # Tykky setup: symlink just the executables that we'll wrap with tykky into a separate location
+    TYKKY_BIN_PATTERNS="ase gpaw* python* dftd3 dftd4"
+    mkdir -p /opt/tykky_wrap/bin
+    for pattern in $TYKKY_BIN_PATTERNS; do
+        for exe in {{ VIEW_DIR }}/bin/$pattern; do
+            ln -s "$exe" /opt/tykky_wrap/bin
+        done
+    done
 
 %environment
     . /opt/gpaw_deps_env.sh

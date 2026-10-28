@@ -50,9 +50,10 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
 
     # Add packages, fetching newest recipes from spack-packages repo when needed.
 
-    # GPU-aware libxc
+    # GPU-aware libxc. TODO: won't work with GPAW yet! Install CPU-only version for now
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/libxc
-    spack add libxc@7.1.2+fhc+cuda cuda_arch=90a ~fortran
+    #spack add libxc@7.1.2+fhc+cuda cuda_arch=90a ~fortran
+    spack add libxc@7.1.2+fhc ~fortran
 
     spack add libvdwxc@0.5.0+mpi
 
@@ -62,6 +63,10 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     spack add py-scipy@1.17
     # GPAW tests have a bug that is incompatible with pytest >=9.1. Fixed in newer GPAW versions
     spack add py-pytest@9.0
+
+    # ASE provides wrappers for dftd3/dftd4 but doesn't install them for you
+    spack add dftd3-lib@0.10
+    spack add dftd4@3.7.0 ^python@3.14
 
     # elpa@2025.06.001 was apparently bad, so we fetch newer recipes. https://gitlab.com/gpaw/gpaw/-/merge_requests/3226
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/elpa
