@@ -3,10 +3,10 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
 %arguments
     # Where the spack view will be created. Keep in sync with config/spack.yaml
-    VIEW_DIR=/opt/gpaw_container_view
+    VIEW_DIR=/opt/gpaw_container
 
 %files
-    # Container is rocky9 but we treat it as rhel9: let's Spack do better job at reusing upstream packages. OK because these are ABI compatible
+    # Container is rocky9 but we treat it as rhel9: lets Spack do better job at reusing upstream packages. OK because these are ABI compatible
     config/rhel9-os-release /etc/os-release
     # Copy Spack config: should instruct Spack to reuse upstream packages whenever possible
     config/spack.yaml /opt/gpaw_deps_config/spack.yaml
@@ -36,6 +36,8 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     spack config add upstreams:${upstream}:install_tree:/appl/soft/spack/core/v2026_03/x86_64/${upstream}/install_dir
     spack config add config:source_cache:source-cache
 
+    # Some recipes need pkgconfig which spack may try to install and fail because its recipe is configured badly.
+    # No idea why this seems to only fail occasionally. Prevent(?) by using external pkgconfig.
     spack external find pkgconf pkg-config
 
     # Take the same version of spack-packages as on Roihu (or at least not too different).
@@ -108,6 +110,7 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     ENV_SCRIPT=/opt/gpaw_deps_env.sh
     echo '# Activate module environment and load default modules' > $ENV_SCRIPT
     echo '. /opt/activate.sh' >> $ENV_SCRIPT
+    echo 'export _SPACK_GPAW_VIEW_DIR={{ VIEW_DIR }}' >> $ENV_SCRIPT
     echo 'export PATH={{ VIEW_DIR }}/bin:$PATH' >> $ENV_SCRIPT
     echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
     echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT
@@ -117,13 +120,17 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     echo 'export PYTHONPATH={{ VIEW_DIR }}/lib/python3.14/site-packages:$PYTHONPATH' >> $ENV_SCRIPT
 
     # Tykky setup: symlink just the executables that we'll wrap with tykky into a separate location
-    TYKKY_BIN_PATTERNS="ase gpaw* python* dftd3 dftd4"
-    mkdir -p /opt/tykky_wrap/bin
+    TYKKY_BIN_PATTERNS="ase gpaw* python* pytest dftd3 dftd4"
+    TYKKY_BIN_DIR=/opt/tykky_wrap/bin
+    mkdir -p "$TYKKY_BIN_DIR"
+    set -f
     for pattern in $TYKKY_BIN_PATTERNS; do
-        for exe in {{ VIEW_DIR }}/bin/$pattern; do
-            ln -s "$exe" /opt/tykky_wrap/bin
+        find "{{ VIEW_DIR }}/bin" -maxdepth 1 -name "$pattern" | while read -r exe; do
+            ln -s "$exe" "$TYKKY_BIN_DIR"
         done
     done
+    set +f
+    ls "$TYKKY_BIN_DIR"
 
 %environment
     . /opt/gpaw_deps_env.sh

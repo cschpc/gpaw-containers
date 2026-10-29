@@ -7,7 +7,7 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
 
 %arguments
     # Where the spack view will be created. Keep in sync with config/spack.yaml
-    VIEW_DIR=/opt/views/gpaw_deps
+    VIEW_DIR=/opt/gpaw_container
 
 %files
     config/rhel9-os-release /etc/os-release
@@ -19,8 +19,6 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     # Spack prerequisites
     dnf install --assumeyes epel-release
     dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd gdb which
-    # Some spack recipes fail to build without these (but don't specify them as dependencies, so spack fails to install them)
-    dnf install --assumeyes autoconf libtool automake
 
     cd /opt
     git clone --depth 1 -b csc/v1.1 https://github.com/CSCfi/spack.git
@@ -43,17 +41,15 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     git remote add upstream https://github.com/spack/spack-packages.git
     git fetch upstream develop --depth=1
 
-    # Some recipes need pkgconfig which spack may try to install and fail because its recipe is configured badly.
-    # No idea why this seems to only fail occasionally.
-    # Prevent by using external pkgconfig.
     spack external find pkgconf pkg-config
 
     # Add packages, fetching newest recipes from spack-packages repo when needed.
 
-    # GPU-aware libxc. TODO: won't work with GPAW yet! Install CPU-only version for now
+    # GPU-aware libxc is currently supported only in GPAW dev version. Therefore, install CPU-only version for now.
+    # Can replace this with the GPU-version (commented out below) for the next GPAW release
     git checkout upstream/develop -- repos/spack_repo/builtin/packages/libxc
-    #spack add libxc@7.1.2+fhc+cuda cuda_arch=90a ~fortran
     spack add libxc@7.1.2+fhc ~fortran
+    #spack add libxc@7.1.2+fhc+cuda cuda_arch=90a ~fortran
 
     spack add libvdwxc@0.5.0+mpi
 
@@ -89,6 +85,7 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     ENV_SCRIPT=/opt/gpaw_deps_env.sh
     echo '# Activate module environment and load default modules' > $ENV_SCRIPT
     echo '. /opt/activate.sh' >> $ENV_SCRIPT
+    echo 'export _SPACK_GPAW_VIEW_DIR={{ VIEW_DIR }}' >> $ENV_SCRIPT
     echo 'export PATH={{ VIEW_DIR }}/bin:$PATH' >> $ENV_SCRIPT
     echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
     echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT

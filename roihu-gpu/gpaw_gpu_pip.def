@@ -38,6 +38,19 @@ From: gpaw_gpu_base.sif
     # cleanup
     rm -rf /opt/gpaw
 
+    # Tykky setup: symlink just the executables that we'll wrap with tykky into a separate location
+    TYKKY_BIN_PATTERNS="ase gpaw* python* pytest dftd3 dftd4"
+    TYKKY_BIN_DIR=/opt/tykky_wrap/bin
+    mkdir -p "$TYKKY_BIN_DIR"
+    set -f
+    for pattern in $TYKKY_BIN_PATTERNS; do
+        find "$_SPACK_GPAW_VIEW_DIR/bin" -maxdepth 1 -name "$pattern" | while read -r exe; do
+            ln -s "$exe" "$TYKKY_BIN_DIR"
+        done
+    done
+    set +f
+    ls "$TYKKY_BIN_DIR"
+
 %environment
     . /opt/gpaw_deps_env.sh
 
