@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: gpaw_cpu.sif
+From: gpaw_cpu_base.sif
 
 %files
     config/gpaw_cpu_siteconfig.py /opt/gpaw_deps_config/siteconfig.py

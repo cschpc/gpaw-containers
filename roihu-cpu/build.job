@@ -9,4 +9,5 @@
 #SBATCH --mem-per-cpu=2G
 
 export APPTAINER_CACHEDIR=$TMPDIR
+apptainer build --force --bind="$TMPDIR:/tmp" --fakeroot gpaw_cpu_base.sif gpaw_cpu_base.def
 apptainer build --force --bind="$TMPDIR:/tmp" --fakeroot gpaw_cpu.sif gpaw_cpu.def
