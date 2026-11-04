@@ -10,18 +10,26 @@ include_dirs = []
 extra_compile_args = [
     '-fPIC',
     '-O3',
+    '-march=znver5',
     '-g',
-    '-fopenmp',
     '-Wall',
     '-Wno-unused-parameter',
 ]
-
-libraries += ['xc', 'openblas']
 
 with_omp = True
 if with_omp:
     extra_compile_args += ['-fopenmp']
     extra_link_args = ['-fopenmp']
+
+# Build without a BLAS library?
+noblas = False
+if not noblas:
+    libraries += ['openblas']
+
+# Build without Libxc?
+nolibxc = False
+if not nolibxc:
+    libraries += ['xc']
 
 fftw = True
 if fftw:
@@ -38,5 +46,3 @@ if libvdwxc:
 elpa = True
 if elpa:
     libraries += ['elpa_openmp']
-    # elpa headers have a messed up directory structure
-    include_dirs += ['/opt/gpaw_container/include/elpa_openmp-2026.02.002']

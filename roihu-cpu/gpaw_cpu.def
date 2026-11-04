@@ -6,7 +6,6 @@ From: gpaw_cpu_base.sif
 
 %post
     . /opt/gpaw_deps_env.sh
-    VIEW=/opt/gpaw_container
 
     # The following installs and upgrades Pypi packages directly in the Spack-managed site-packages location.
     # This should be OK as long as we don't use Spack for anything after this point!

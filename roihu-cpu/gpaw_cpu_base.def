@@ -2,8 +2,9 @@ Bootstrap: docker
 From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
 
 %arguments
-    # Where the spack view will be created. Keep in sync with config/spack.yaml
-    VIEW_DIR=/opt/gpaw_container
+    # Where the spack view will be created. Keep in sync with config/spack.yaml.
+    # This will be shown in "gpaw info"
+    VIEW_DIR=/gpaw_container
 
 %files
     # Container is rocky9 but we treat it as rhel9: lets Spack do better job at reusing upstream packages. OK because these are ABI compatible
@@ -39,6 +40,8 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     # Some recipes need pkgconfig which spack may try to install and fail because its recipe is configured badly.
     # No idea why this seems to only fail occasionally. Prevent(?) by using external pkgconfig.
     spack external find pkgconf pkg-config
+    # Spack autotools builder __sometimes__ needs these => hard to test since it doesn't fail every time! Unsure if this fixes anything:
+    spack external find autoconf automake libtool
 
     # Take the same version of spack-packages as on Roihu (or at least not too different).
     # This won't have all newest recipes for some deps that we want; will fetch those individually later (and fight the concretizer until they build cleanly)
@@ -100,6 +103,8 @@ From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
     echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
     echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT
     echo 'export CPATH={{ VIEW_DIR }}/include:$CPATH' >> $ENV_SCRIPT
+    # "Patch" for ELPA's weird include path
+    echo 'export CPATH={{ VIEW_DIR }}/include/elpa_openmp-2026.02.002:$CPATH' >> $ENV_SCRIPT
     echo 'export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH' >> $ENV_SCRIPT
     echo 'export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH' >> $ENV_SCRIPT
 

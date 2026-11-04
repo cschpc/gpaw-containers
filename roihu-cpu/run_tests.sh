@@ -73,6 +73,8 @@ IGNORE_FLAGS=(
     '--ignore=$GPAW_TESTDIR/xc/test_lxc_fhc.py'
     # Fails due to tolerances?
     '--ignore=$GPAW_TESTDIR/tddft/test_molecule.py::test_dipole_moment_values'
+    # Some dftd3 tests fail with certain rank counts. Unfortunate because because these are our checks for DFTD3 bindings.
+    # But at least we don't have to skip all of them.
     '--ignore=$GPAW_TESTDIR/test_d3_extension.py::test_d3_extensions[mode0-parallel1]'
     '--ignore=$GPAW_TESTDIR/test_d3_extension.py::test_d3_extensions[mode0-parallel2]'
 )

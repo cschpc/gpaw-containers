@@ -13,7 +13,8 @@ spack:
 
   view:
     default:
-      root: /opt/gpaw_container
+      # Keep in sync with VIEW_DIR in the container .def
+      root: /gpaw_container
       link: all
       # Hardlink instead of symlink to avoid issues with Python venvs
       link_type: hardlink
