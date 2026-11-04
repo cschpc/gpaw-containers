@@ -1,0 +1,110 @@
+Bootstrap: docker
+From: satama.csc.fi/r_installation_spack/core-cpu-gcc-15.2.0:v2026_03
+
+%arguments
+    # Where the spack view will be created. Keep in sync with config/spack.yaml
+    VIEW_DIR=/opt/gpaw_container
+
+%files
+    # Container is rocky9 but we treat it as rhel9: lets Spack do better job at reusing upstream packages. OK because these are ABI compatible
+    config/rhel9-os-release /etc/os-release
+    # Copy Spack config: should instruct Spack to reuse upstream packages whenever possible
+    config/spack.yaml /opt/gpaw_deps_config/spack.yaml
+    # Custom Spack recipe for Python that just adds 3.14.10 (eMudhra CA hotfix)
+    config/python_spack_package.py /opt/gpaw_deps_config/python_spack_package.py
+
+%post
+    mkdir -p /users
+
+    # Spack prerequisites
+    dnf install --assumeyes epel-release
+    # GPAW build kinda assumes 'which' to be available so we install it, too
+    dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd gdb which
+
+    cd /opt
+    # Use the same (or almost same) version of spack and spack-packages as used when the Roihu stack was built.
+    # Otherwise can run in nasty issues where Spack would install a separate GCC runtime due to eg. compiler-wrapper version being different.
+    git clone --depth 1 -b csc/v1.1 https://github.com/CSCfi/spack.git
+    . spack/share/spack/setup-env.sh
+
+    # Create a spack environment using our copied spack config and make the env aware of packages installed in the base container
+    source spack/share/spack/setup-env.sh
+    upstream=gcc152_ec
+    spack env create /opt/environments/gpaw_deps /opt/gpaw_deps_config/spack.yaml
+    spack env activate -p /opt/environments/gpaw_deps
+
+    spack config add upstreams:${upstream}:install_tree:/appl/soft/spack/core/v2026_03/x86_64/${upstream}/install_dir
+    spack config add config:source_cache:source-cache
+
+    # Some recipes need pkgconfig which spack may try to install and fail because its recipe is configured badly.
+    # No idea why this seems to only fail occasionally. Prevent(?) by using external pkgconfig.
+    spack external find pkgconf pkg-config
+
+    # Take the same version of spack-packages as on Roihu (or at least not too different).
+    # This won't have all newest recipes for some deps that we want; will fetch those individually later (and fight the concretizer until they build cleanly)
+    git clone -b csc/v2026.03 --depth 1 https://github.com/CSCfi/spack-packages.git
+
+    spack repo add /opt/spack-packages/repos/spack_repo/builtin
+
+    # Fetch newest upstream package repo
+    cd spack-packages
+    git remote add upstream https://github.com/spack/spack-packages.git
+    # Pin to a reasonably recent commit
+    git fetch upstream eaadd8b74d28556d5a8aa293f50160b537f8f963:refs/remotes/upstream/pinned --depth=1
+
+    # Add packages, fetching newer recipes from spack-packages repo when needed.
+    # These docs are useful in case spack fails to utilize upstream packages:
+    # https://docs.csc.fi/support/tutorials/roihu-user-spack/#what-to-do-when-concretization-is-not-using-an-upstream-dependency
+
+    # Python with tkinter. Funny dependency chain here: this tk needs python as a build dep,
+    # and it will resolve to use python 3.14.3 from the upstream base container. OK since it's used during build only
+    cp /opt/gpaw_deps_config/python_spack_package.py repos/spack_repo/builtin/packages/python/package.py
+    spack add python@3.14.10 ^tk+xft+xss
+
+    # Get a safe version of py-certifi in case some dependency uses it during build
+    git checkout upstream/pinned -- repos/spack_repo/builtin/packages/py_certifi
+    spack add py-certifi
+    spack add py-numpy@2.4
+    spack add py-scipy@1.17
+
+    git checkout upstream/pinned -- repos/spack_repo/builtin/packages/libxc
+    spack add libxc@7.1.2+fhc ~fortran
+    spack add libvdwxc@0.5.0+mpi
+
+    # elpa@2025.06.001 was apparently bad, so we fetch newer recipes. https://gitlab.com/gpaw/gpaw/-/merge_requests/3226
+    git checkout upstream/pinned -- repos/spack_repo/builtin/packages/elpa
+    spack add elpa@2026.02.002 +mpi
+
+    # ASE provides wrappers for dftd3/dftd4 but doesn't install them for you
+    spack add dftd3-lib@0.10
+    spack add dftd4@3.7.0+python ^python@3.14.10
+
+    cd /opt
+
+    # Concretize and install, storing logs
+    export LOG_DIR=/opt/environments/gpaw_deps/logs
+    mkdir -p $LOG_DIR
+    spack concretize -f 2>&1 | tee $LOG_DIR/spack-concretize.log
+    spack find -v --long --show-full-compiler > $LOG_DIR/spack-concretized-specs.txt
+    spack find --long | tee $LOG_DIR/spack-find.log
+
+    spack install --log-format=junit --log-file=$LOG_DIR/install.log --show-log-on-error --fail-fast
+
+    # Write the env setup to a plain script that the %environment block can load.
+    # We want to avoid loading the spack env directly (slow!). Instead, set relevant vars point to the spack view
+    ENV_SCRIPT=/opt/gpaw_deps_env.sh
+    echo '# Activate module environment and load default modules' > $ENV_SCRIPT
+    echo '. /opt/activate.sh' >> $ENV_SCRIPT
+    echo 'export _SPACK_GPAW_VIEW_DIR={{ VIEW_DIR }}' >> $ENV_SCRIPT
+    echo 'export PATH={{ VIEW_DIR }}/bin:$PATH' >> $ENV_SCRIPT
+    echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
+    echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT
+    echo 'export CPATH={{ VIEW_DIR }}/include:$CPATH' >> $ENV_SCRIPT
+    echo 'export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH' >> $ENV_SCRIPT
+    echo 'export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH' >> $ENV_SCRIPT
+
+%environment
+    . /opt/gpaw_deps_env.sh
+
+%runscript
+    exec "$@"
