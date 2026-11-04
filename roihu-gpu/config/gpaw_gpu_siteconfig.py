@@ -38,7 +38,7 @@ if libvdwxc:
 elpa = True
 if elpa:
     libraries += ['elpa_openmp']
-    # elpa headers have messed up directory structure
+    # elpa headers have a messed up directory structure
     include_dirs += ['/opt/views/gpaw_deps/include/elpa_openmp-2026.02.002']
 
 gpu = True

@@ -15,7 +15,7 @@ spack:
     default:
       root: /opt/gpaw_container
       link: all
-      link_type: symlink
+      link_type: hardlink
 
   specs:
     # Add core deps to the environment. These should come from upstream directly.
