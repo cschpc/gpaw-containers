@@ -15,7 +15,8 @@ spack:
     default:
       root: /opt/gpaw_container
       link: all
-      link_type: symlink
+      # Hardlink instead of symlink to avoid issues with Python venvs
+      link_type: hardlink
 
   specs:
     # Add core deps to the environment. These should come from upstream directly.
