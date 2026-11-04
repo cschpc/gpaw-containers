@@ -35,6 +35,11 @@ From: gpaw_cpu_base.sif
     cd /opt
     rm -rf gpaw
 
+    # Copy the siteconfig to a convenient location. Can be useful reference for users who want dev installation
+    mkdir -p $_SPACK_GPAW_VIEW_DIR/gpaw_utils
+    cp $GPAW_CONFIG $_SPACK_GPAW_VIEW_DIR/gpaw_utils/siteconfig.py
+
+
     # Tykky setup: symlink just the executables that we'll wrap with tykky into a separate location
     TYKKY_BIN_PATTERNS="ase gpaw* python* pytest dftd3 dftd4"
     TYKKY_BIN_DIR=/opt/tykky_wrap/bin

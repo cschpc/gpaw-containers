@@ -61,9 +61,7 @@ echo "Submitted GPW file generation job: $GPWJOB"
 
 ###
 
-
 # Ignore tests that are known to fail for GPAW 26.7
-# Single-quoted (and array, not string) so that $GPAW_TESTDIR expands inside the job script, not here.
 IGNORE_FLAGS=(
     '--ignore=$GPAW_TESTDIR/test_mpi_enabledness.py'
     '--ignore=$GPAW_TESTDIR/lrtddft/test_placzek_profeta_albrecht.py'
@@ -71,12 +69,12 @@ IGNORE_FLAGS=(
     '--ignore=$GPAW_TESTDIR/etdm/test_etdm_er_localize.py'
     '--ignore=$GPAW_TESTDIR/elph/test_supercell.py'
     '--ignore=$GPAW_TESTDIR/xc/test_lxc_fhc.py'
-    # Fails due to tolerances?
-    '--ignore=$GPAW_TESTDIR/tddft/test_molecule.py::test_dipole_moment_values'
+    # Fails due to tolerances?.
+    '--deselect=$GPAW_TESTDIR/tddft/test_molecule.py::test_dipole_moment_values'
     # Some dftd3 tests fail with certain rank counts. Unfortunate because because these are our checks for DFTD3 bindings.
     # But at least we don't have to skip all of them.
-    '--ignore=$GPAW_TESTDIR/test_d3_extension.py::test_d3_extensions[mode0-parallel1]'
-    '--ignore=$GPAW_TESTDIR/test_d3_extension.py::test_d3_extensions[mode0-parallel2]'
+    '--deselect=$GPAW_TESTDIR/test_d3_extension.py::test_d3_extensions[mode0-parallel1]'
+    '--deselect=$GPAW_TESTDIR/test_d3_extension.py::test_d3_extensions[mode0-parallel2]'
 )
 
 # Submit full test suite run with n MPI tasks, held until the GPW job succeeds
