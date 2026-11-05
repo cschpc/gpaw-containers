@@ -1,8 +1,14 @@
 Bootstrap: localimage
 From: gpaw_cpu_base.sif
 
+%arguments
+    # Keep in sync with gpaw_cpu_base.def
+    BASEDIR=/gpaw_container
+    CONFIG_DIR={{ BASEDIR }}/config
+
 %files
-    config/gpaw_cpu_siteconfig.py /opt/gpaw_deps_config/siteconfig.py
+    # Copy siteconfig into the container. It can be useful for users too so keep it in a sensible location
+    config/gpaw_cpu_siteconfig.py {{ CONFIG_DIR }}/siteconfig.py
 
 %post
     . /opt/gpaw_deps_env.sh
@@ -27,18 +33,13 @@ From: gpaw_cpu_base.sif
     python -m pip install ase==3.29.0
     cd /opt
     git clone --depth=1 -b 26.7.0 https://gitlab.com/gpaw/gpaw.git
-    export GPAW_CONFIG=/opt/gpaw_deps_config/siteconfig.py
+    export GPAW_CONFIG={{ CONFIG_DIR }}/siteconfig.py
     cd gpaw
     # Seems to not install _gpaw.so into correct place if using makefile build. This needs FIXME on GPAW side
     python -m pip install -v . --no-build-isolation
 
     cd /opt
     rm -rf gpaw
-
-    # Copy the siteconfig to a convenient location. Can be useful reference for users who want dev installation
-    mkdir -p $_SPACK_GPAW_VIEW_DIR/gpaw_utils
-    cp $GPAW_CONFIG $_SPACK_GPAW_VIEW_DIR/gpaw_utils/siteconfig.py
-
 
     # Tykky setup: symlink just the executables that we'll wrap with tykky into a separate location
     TYKKY_BIN_PATTERNS="ase gpaw* python* pytest dftd3 dftd4"

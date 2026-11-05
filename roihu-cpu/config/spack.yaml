@@ -14,7 +14,7 @@ spack:
   view:
     default:
       # Keep in sync with VIEW_DIR in the container .def
-      root: /gpaw_container
+      root: /gpaw_container/view
       link: all
       # Hardlink instead of symlink to avoid issues with Python venvs
       link_type: hardlink
@@ -86,10 +86,3 @@ spack:
       externals:
       - spec: knem@1.1.4 %c=gcc@15.2.0
         prefix: /opt/knem-1.1.4.90mlnx4
-
-    git:
-      # Use system git. git Spack recipe has pcre2 as dependency which doesn't build properly (recipe omits build deps)
-      buildable: false
-      externals:
-      - spec: git@2.52.0
-        prefix: /usr

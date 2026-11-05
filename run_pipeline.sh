@@ -1,18 +1,30 @@
 #!/bin/bash
-# Full Roihu-CPU pipeline: build containers, create Tykky wrappers, run the test suite.
-# Usage: ./run_pipeline.sh [SLURM_ACCOUNT]
+# Full Roihu pipeline: build the container, create Tykky wrappers, smoke-test, run the test suite.
+# Usage: ./run_pipeline.sh <cpu|gpu> [SLURM_ACCOUNT]
 # The SLURM account can also be provided via the SLURM_ACCOUNT environment variable.
+# Platform-specific steps (build.job, run_tests.sh) live under roihu-cpu/ and roihu-gpu/.
 
 set -euo pipefail
 
+PLATFORM=${1:-}
+if [[ "$PLATFORM" != "cpu" && "$PLATFORM" != "gpu" ]]; then
+    echo "Usage: $0 <cpu|gpu> [SLURM_ACCOUNT]" >&2
+    exit 1
+fi
+shift
+
 SLURM_ACCOUNT=${1:-${SLURM_ACCOUNT:-}}
 if [[ -z "$SLURM_ACCOUNT" ]]; then
-    echo "Warning: No SLURM account specified. Pass it as the first argument or set \$SLURM_ACCOUNT." >&2
+    echo "Warning: No SLURM account specified. Pass it as the second argument or set \$SLURM_ACCOUNT." >&2
 fi
 ACCOUNT_FLAG=()
 [[ -n "$SLURM_ACCOUNT" ]] && ACCOUNT_FLAG=(--account="$SLURM_ACCOUNT")
 
-WRAPPER_DIR=$PWD/wrappers_cpu/tester
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+cd "$SCRIPT_DIR/roihu-$PLATFORM"
+
+SIF=$PWD/gpaw_$PLATFORM.sif
+WRAPPER_DIR=$PWD/wrappers_$PLATFORM/tester
 
 # Run a command, exiting with an error message if it fails.
 run_step() {
@@ -30,8 +42,7 @@ run_step "Building the container (build.job)" sbatch --wait "${ACCOUNT_FLAG[@]}"
 
 echo "==> Creating Tykky wrappers in $WRAPPER_DIR..."
 ml tykky
-SIF=$PWD/gpaw_cpu.sif
-wrap-container -w /opt/tykky_wrap/bin $SIF --prefix $WRAPPER_DIR
+wrap-container -w /opt/tykky_wrap/bin "$SIF" --prefix "$WRAPPER_DIR"
 echo "==> Wrappers created."
 
 export PATH="$WRAPPER_DIR/bin:$PATH"

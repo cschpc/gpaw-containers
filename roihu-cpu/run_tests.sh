@@ -8,7 +8,6 @@ set -euo pipefail
 # This is a bit messy because GPAW's parallel launcher is broken. Setting GPAW_MPI_BACKEND=cgpaw seems to be broken,
 # so we have to use `srun gpaw python` which _naturally_ doesn't work with ntasks==1.
 
-
 SLURM_ACCOUNT=${1:-${SLURM_ACCOUNT:-}}
 if [[ -z "$SLURM_ACCOUNT" ]]; then
     echo "Warning: No SLURM account specified. Pass it as the first argument or set \$SLURM_ACCOUNT." >&2
@@ -16,7 +15,7 @@ fi
 ACCOUNT_FLAG=""
 [[ -n "$SLURM_ACCOUNT" ]] && ACCOUNT_FLAG="-A $SLURM_ACCOUNT"
 
-export TEST_RUNS_DIR=$PWD/testruns_cpu
+export TEST_RUNS_DIR=$PWD/testruns
 mkdir -p "$TEST_RUNS_DIR"
 cd "$TEST_RUNS_DIR"
 
@@ -89,7 +88,7 @@ submit_test_job() {
         launcher="srun gpaw python"
     fi
     sbatch -p small --nodes=1 --ntasks-per-node="$n" --mem-per-cpu="$mem" -t 04:00:00 \
-        $ACCOUNT_FLAG -J "pytest-cpu-$n" -o "$TEST_RUNS_DIR/%x.out" \
+        $ACCOUNT_FLAG -J "pytest-$n" -o "$TEST_RUNS_DIR/%x.out" \
         --dependency=afterok:"$GPWJOB" << EOF
 #!/bin/bash
 cd \$GPAW_HOME
