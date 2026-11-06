@@ -698,6 +698,12 @@ class Python(Package):
             # using spec.__getitem__.
             ldflags = " ".join(spec[dep.name].libs.search_flags for dep in link_deps)
 
+            if "+tkinter" in spec:
+                ldflags = " ".join([ldflags]
+                                   + spec["tcl"].libs.ld_flags.split()
+                                   + spec["tk"].libs.ld_flags.split()
+                )
+
             config_args.extend(["CPPFLAGS=" + cppflags, "LDFLAGS=" + ldflags])
 
         if "+optimizations" in spec:
@@ -764,17 +770,20 @@ class Python(Package):
             else:
                 config_args.append("--without-system-ffi")
 
-        if "+tkinter" in spec:
-            config_args.extend(
-                [
-                    "--with-tcltk-includes=-I{0} -I{1}".format(
-                        spec["tcl"].prefix.include, spec["tk"].prefix.include
-                    ),
-                    "--with-tcltk-libs={0} {1}".format(
-                        spec["tcl"].libs.ld_flags, spec["tk"].libs.ld_flags
-                    ),
-                ]
-            )
+
+        # if "+tkinter" in spec:
+        #     config_args.extend(
+        #         [
+        #             "--with-tcltk-includes=-I{0} -I{1}".format(
+        #                 spec["tcl"].prefix.include, spec["tk"].prefix.include
+        #             ),
+        #             "--with-tcltk-libs={0} {1}".format(
+        #                 spec["tcl"].libs.ld_flags, spec["tk"].libs.ld_flags
+        #             ),
+        #         ]
+        #     )
+
+
 
         if "+freethreading" in spec:
             config_args.append("--disable-gil")
