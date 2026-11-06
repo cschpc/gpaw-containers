@@ -7,6 +7,8 @@
 #SBATCH --ntasks-per-node=1 --cpus-per-task=72  # The product should be 72 if requesting 1 GPU per node
 #SBATCH --gres=gpu:gh200:1  # Corresponds to 1 GPU per node
 
+set -euo pipefail
+
 export APPTAINER_CACHEDIR=$TMPDIR
 apptainer build --force --bind="$TMPDIR:/tmp" --fakeroot gpaw_gpu_base.sif gpaw_gpu_base.def
 apptainer build --force --bind="$TMPDIR:/tmp" --fakeroot gpaw_gpu.sif gpaw_gpu.def

@@ -1,18 +1,27 @@
-# Installs most dependencies needed for GPAW using Spack
+# Installs most dependencies needed for GPAW using Spack.
+# CuPy seems very tricky to install via Spack. We get it with pip in the followup container
 
 Bootstrap: docker
-From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_03
+From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.0.2:v2026_03
 
 # This recipe has a lot in common with roihu_cpu.def. See there for detailed comments
 
 %arguments
-    # Where the spack view will be created. Keep in sync with config/spack.yaml
-    VIEW_DIR=/opt/gpaw_container
+    PYTHON_VER=3.14.10
+    BASEDIR=/gpaw_container
+    CONFIG_DIR={{ BASEDIR }}/config
+    # Where the spack view will be created. Keep in sync with config/spack.yaml.
+    # This will be shown in "gpaw info"
+    VIEW_DIR={{ BASEDIR }}/view
+    # Script for loading the produced environment. Keep in sync with the other .def
+    ENV_SCRIPT=/opt/gpaw_deps_env.sh
 
 %files
-    config/rhel9-os-release /etc/os-release
-    config/spack.yaml /opt/gpaw_deps_config/spack.yaml
-    ../roihu-cpu/config/python_spack_package.py /opt/gpaw_deps_config/python_spack_package.py
+    # Container is rocky9 but we treat it as rhel9: lets Spack do better job at reusing upstream packages. OK because these are ABI compatible
+    ../common/rhel9-os-release /etc/os-release
+    ../common/python_spack_package.py {{ CONFIG_DIR }}/python_spack_package.py
+
+    config/spack.yaml {{ CONFIG_DIR }}/spack.yaml
 
 %post
     mkdir -p /users
@@ -20,19 +29,45 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     # Spack prerequisites
     dnf install --assumeyes epel-release
     dnf install --assumeyes file bzip2 ca-certificates git gzip patch python3 tar unzip xz zstd gdb which
+    # Autotools stuff that many Spack packages apparently can't do without...
+    dnf install --assumeyes autoconf automake libtool m4
+    dnf install --assumeyes tcl-devel tk-devel
+    dnf clean all
 
-    cd /opt
+    cd {{ BASEDIR }}
     git clone --depth 1 -b csc/v1.1 https://github.com/CSCfi/spack.git
     . spack/share/spack/setup-env.sh
 
     source spack/share/spack/setup-env.sh
     upstream=g15cu131_eg
-    spack env create /opt/environments/gpaw_deps /opt/gpaw_deps_config/spack.yaml
-    spack env activate -p /opt/environments/gpaw_deps
+    spack env create environments/gpaw_deps {{ CONFIG_DIR }}/spack.yaml
+    spack env activate -p environments/gpaw_deps
 
     spack config add upstreams:${upstream}:install_tree:/appl/soft/spack/core/v2026_03/aarch64/${upstream}/install_dir
     spack config add config:source_cache:source-cache
 
+    # Configure external packages
+    spack external find pkgconf pkg-config git
+    # Spack autotools builder __sometimes__ needs these => hard to test since it doesn't fail every time! Unsure if this fixes anything:
+    spack external find autoconf automake libtool
+    # Configure specs for external tcl, tk. Use Spack's file-merge (-f) instead of fighting `spack config add ...` syntax
+    TCL_VERSION=$(rpm -q --qf '%{VERSION}' tcl)
+    cat > /tmp/tcl_tk_packages.yaml << EOF
+packages:
+  tcl:
+    buildable: false
+    externals:
+    - spec: tcl@${TCL_VERSION}
+      prefix: /usr
+  tk:
+    buildable: false
+    externals:
+    - spec: tk@${TCL_VERSION}+xft+xss ^tcl@${TCL_VERSION}
+      prefix: /usr
+EOF
+    spack config add -f /tmp/tcl_tk_packages.yaml
+
+    #
     git clone -b csc/v2026.03 --depth 1 https://github.com/CSCfi/spack-packages.git
     spack repo add spack-packages/repos/spack_repo/builtin
 
@@ -41,16 +76,28 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
     git remote add upstream https://github.com/spack/spack-packages.git
     # Pin to a reasonably recent commit
     git fetch upstream eaadd8b74d28556d5a8aa293f50160b537f8f963:refs/remotes/upstream/pinned --depth=1
-    spack external find pkgconf pkg-config
 
-    # Add packages, fetching newest recipes from spack-packages repo when needed.
+    export LOG_DIR={{ BASEDIR }}/environments/gpaw_deps/logs
+    mkdir -p $LOG_DIR
 
+    # Add packages, fetching newer recipes from spack-packages repo when needed.
     # Python with tkinter
-    cp /opt/gpaw_deps_config/python_spack_package.py repos/spack_repo/builtin/packages/python/package.py
-    spack add python@3.14.10 ^tk+xft+xss
-    # Get a safe version of py-certifi in case some dependency uses it during build
-    git checkout upstream/pinned -- repos/spack_repo/builtin/packages/py_certifi
-    spack add py-certifi
+    cp {{ CONFIG_DIR }}/python_spack_package.py repos/spack_repo/builtin/packages/python/package.py
+    spack add python@{{ PYTHON_VER }} +optimizations +tkinter +pyexpat+ctypes+ssl+sqlite3+bz2+lzma+zstd+uuid+readline+dbm+curses ^tk+xft+xss
+    spack install --log-format=junit --log-file=$LOG_DIR/install-python.log --show-log-on-error --fail-fast --test=root
+
+    # spack concretize -f
+    # spack install --log-format=junit --log-file=$LOG_DIR/install.log --show-log-on-error --fail-fast
+    # which python
+    # python -m ensurepip
+    # python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+    # python -m pip install --upgrade certifi
+    # # Should be pip >= 26.2.2, certifi >= 2026.10.19
+    # python -m pip --version
+    # python -m pip list | grep certifi
+
+    # spack external find py-pip py-certifi
+
     spack add py-numpy@2.4
     spack add py-scipy@1.17
 
@@ -68,35 +115,35 @@ From: satama.csc.fi/r_installation_spack/core-gpu-gcc-15.2.0-cuda-13.1.1:v2026_0
 
     # ASE provides wrappers for dftd3/dftd4 but doesn't install them for you
     spack add dftd3-lib@0.10
-    spack add dftd4@3.7.0+python ^python@3.14.10
+    spack add dftd4@3.7.0+python ^python@{{ PYTHON_VER }}
 
-    # CuPy seems very tricky to install via Spack. We get it with pip in the followup container
+    cd {{ BASEDIR }}
 
     # Concretize and install, storing logs
-    export LOG_DIR=/opt/environments/gpaw_deps/logs
-    mkdir -p $LOG_DIR
     spack concretize -f 2>&1 | tee $LOG_DIR/spack-concretize.log
     spack find -v --long --show-full-compiler > $LOG_DIR/spack-concretized-specs.txt
     spack find --long | tee $LOG_DIR/spack-find.log
 
     spack install --log-format=junit --log-file=$LOG_DIR/install.log --show-log-on-error --fail-fast
-    cd /
 
     # Write the env setup to a plain script that the %environment block can load.
     # We want to avoid loading the spack env directly (slow!). Instead, set relevant vars point to the spack view
-    ENV_SCRIPT=/opt/gpaw_deps_env.sh
-    echo '# Activate module environment and load default modules' > $ENV_SCRIPT
-    echo '. /opt/activate.sh' >> $ENV_SCRIPT
-    echo 'export _SPACK_GPAW_VIEW_DIR={{ VIEW_DIR }}' >> $ENV_SCRIPT
-    echo 'export PATH={{ VIEW_DIR }}/bin:$PATH' >> $ENV_SCRIPT
-    echo 'export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH' >> $ENV_SCRIPT
-    echo 'export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH' >> $ENV_SCRIPT
-    echo 'export CPATH={{ VIEW_DIR }}/include:$CPATH' >> $ENV_SCRIPT
-    echo 'export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH' >> $ENV_SCRIPT
-    echo 'export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH' >> $ENV_SCRIPT
+    cat > {{ ENV_SCRIPT }} << 'EOF'
+# Activate module environment and load default modules
+. /opt/activate.sh
+export _SPACK_GPAW_VIEW_DIR={{ VIEW_DIR }}
+export PATH={{ VIEW_DIR }}/bin:$PATH
+export LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LIBRARY_PATH
+export LD_LIBRARY_PATH={{ VIEW_DIR }}/lib:{{ VIEW_DIR }}/lib64:$LD_LIBRARY_PATH
+export CPATH={{ VIEW_DIR }}/include:$CPATH
+# "Patch" for ELPA's weird include path
+export CPATH={{ VIEW_DIR }}/include/elpa_openmp-2026.02.002:$CPATH
+export PKG_CONFIG_PATH={{ VIEW_DIR }}/lib/pkgconfig:{{ VIEW_DIR }}/lib64/pkgconfig:$PKG_CONFIG_PATH
+export MANPATH={{ VIEW_DIR }}/share/man:$MANPATH
+EOF
 
 %environment
-    . /opt/gpaw_deps_env.sh
+    . {{ ENV_SCRIPT }}
 
 %runscript
     exec "$@"

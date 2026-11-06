@@ -4,6 +4,9 @@
 # The SLURM account can also be provided via the SLURM_ACCOUNT environment variable.
 # Platform-specific steps (build.job, run_tests.sh) live under roihu-cpu/ and roihu-gpu/.
 
+# Will wrap this directory inside the container with Tykky
+TYKKY_WRAP_DIR=/gpaw_container/tykky_wrap/bin
+
 set -euo pipefail
 
 PLATFORM=${1:-}
@@ -42,7 +45,7 @@ run_step "Building the container (build.job)" sbatch --wait "${ACCOUNT_FLAG[@]}"
 
 echo "==> Creating Tykky wrappers in $WRAPPER_DIR..."
 ml tykky
-wrap-container -w /opt/tykky_wrap/bin "$SIF" --prefix "$WRAPPER_DIR"
+wrap-container -w $TYKKY_WRAP_DIR "$SIF" --prefix "$WRAPPER_DIR"
 echo "==> Wrappers created."
 
 export PATH="$WRAPPER_DIR/bin:$PATH"
@@ -58,6 +61,7 @@ smoke_test() {
 
 smoke_test gpaw info
 smoke_test ase -h
+smoke_test python -c "import tkinter"
 # Check DFT4-Python-ASE bindings
 smoke_test python -c "import dftd4; from dftd4.ase import DFTD4; print(f'DFTD4 {dftd4.__version__}')"
 

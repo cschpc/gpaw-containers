@@ -13,7 +13,7 @@ spack:
 
   view:
     default:
-      root: /opt/gpaw_container
+      root: /gpaw_container/view
       link: all
       link_type: hardlink
 
@@ -54,17 +54,12 @@ spack:
             cxx: /appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/gcc-15.2.0-p2c2mm/bin/g++
             fortran: /appl/soft/spack/core/v2026_03/aarch64/compilers_eg/install_dir/neoverse_v2/gcc-11.5.0/gcc-15.2.0-p2c2mm/bin/gfortran
 
-    # # Package config for packages that we absolutely want to reuse from upstream
+    # Package config for packages that we absolutely want to reuse from upstream
     knem:
       buildable: false
       externals:
       - spec: knem@1.1.4 %c=gcc@15.2.0
         prefix: /opt/knem-1.1.4.90mlnx4
-    git:
-      buildable: false
-      externals:
-      - spec: git@2.52.0
-        prefix: /usr
 
     mpi:
       buildable: false

@@ -6,9 +6,18 @@ From: gpaw_gpu_base.sif
 %files
     config/gpaw_gpu_siteconfig.py /opt/gpaw_deps_config/siteconfig.py
 
+%arguments
+    BASEDIR=/gpaw_container
+    CONFIG_DIR={{ BASEDIR }}/config
+    ENV_SCRIPT=/opt/gpaw_deps_env.sh
+    # Where the to-be-wrapped executables are put
+    TYKKY_BIN_DIR={{ BASEDIR }}/tykky_wrap/bin
+
+    GPAW_VERSION=26.7.0
+    ASE_VERSION=3.29.0
+
 %post
-    . /opt/gpaw_deps_env.sh
-    VIEW=/opt/gpaw_container
+    . {{ ENV_SCRIPT }}
 
     cd /opt
 
@@ -26,32 +35,35 @@ From: gpaw_gpu_base.sif
 
     python -m pip install cupy-cuda13x==14.1.1
 
-    python -m pip install ase==3.29.0
+    python -m pip install ase=={{ ASE_VERSION }}
     cd /opt
-    git clone --depth=1 -b 26.7.0 https://gitlab.com/gpaw/gpaw.git
+    git clone --depth=1 -b {{ GPAW_VERSION }} https://gitlab.com/gpaw/gpaw.git
     export GPAW_CONFIG=/opt/gpaw_deps_config/siteconfig.py
     cd gpaw
-    # Seems to not install _gpaw.so into correct place if using makefile build. This needs FIXME on GPAW side
+    # Seems to not install _gpaw .so into correct place if using makefile build. This needs FIXME on GPAW side
     python -m pip install -v . --no-build-isolation
 
     cd /opt
     rm -rf gpaw
 
+    # Copy the siteconfig to a convenient location. Can be useful reference for users who want dev installation
+    mkdir -p $_SPACK_GPAW_VIEW_DIR/gpaw_utils
+    cp $GPAW_CONFIG $_SPACK_GPAW_VIEW_DIR/gpaw_utils/siteconfig.py
+
     # Tykky setup: symlink just the executables that we'll wrap with tykky into a separate location
-    TYKKY_BIN_PATTERNS="ase gpaw* python* pytest dftd3 dftd4"
-    TYKKY_BIN_DIR=/opt/tykky_wrap/bin
-    mkdir -p "$TYKKY_BIN_DIR"
+    TYKKY_BIN_PATTERNS="ase gpaw* python* dftd3 dftd4"
+    mkdir -p {{ TYKKY_BIN_DIR }}
     set -f
     for pattern in $TYKKY_BIN_PATTERNS; do
         find "$_SPACK_GPAW_VIEW_DIR/bin" -maxdepth 1 -name "$pattern" | while read -r exe; do
-            ln -s "$exe" "$TYKKY_BIN_DIR"
+            ln -s "$exe" {{ TYKKY_BIN_DIR }}
         done
     done
     set +f
-    ls "$TYKKY_BIN_DIR"
+    ls {{ TYKKY_BIN_DIR }}
 
 %environment
-    . /opt/gpaw_deps_env.sh
+    . {{ ENV_SCRIPT }}
 
 %runscript
     exec "$@"
