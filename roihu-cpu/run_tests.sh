@@ -85,7 +85,7 @@ submit_test_job() {
         launcher="python"
     else
         mem=4G
-        launcher="srun gpaw python"
+        launcher="srun python -m gpaw python"
     fi
     sbatch -p small --nodes=1 --ntasks-per-node="$n" --mem-per-cpu="$mem" -t 04:00:00 \
         $ACCOUNT_FLAG -J "pytest-$n" -o "$TEST_RUNS_DIR/%x.out" \
