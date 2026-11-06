@@ -12,6 +12,9 @@ fi
 ACCOUNT_FLAG=""
 [[ -n "$SLURM_ACCOUNT" ]] && ACCOUNT_FLAG="-A $SLURM_ACCOUNT"
 
+# Enable Apptainer cuda support
+export APPTAINER_NV=1
+
 export TEST_RUNS_DIR=$PWD/testruns
 mkdir -p "$TEST_RUNS_DIR"
 cd "$TEST_RUNS_DIR"
