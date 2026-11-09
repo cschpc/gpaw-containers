@@ -104,7 +104,7 @@ EOF
     # GPU-aware libxc is currently supported only in GPAW dev version. Therefore, install CPU-only version for now.
     # Can replace this with the GPU-version (commented out below) for the next GPAW release
     git checkout upstream/pinned -- repos/spack_repo/builtin/packages/libxc
-    spack add libxc@7.1.2+fhc ~fortran
+    spack add libxc@7.1.2+fhc ~fortran ~cuda
     #spack add libxc@7.1.2+fhc+cuda cuda_arch=90a ~fortran
 
     spack add libvdwxc@0.5.0+mpi
