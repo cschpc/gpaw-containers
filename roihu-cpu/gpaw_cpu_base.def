@@ -87,7 +87,7 @@ EOF
     # https://docs.csc.fi/support/tutorials/roihu-user-spack/#what-to-do-when-concretization-is-not-using-an-upstream-dependency
     # https://spack.readthedocs.io/en/latest/frequently_asked_questions.html#why-does-spack-pick-particular-versions-and-variants
 
-    # Python with tkinter. Also explicitly enable many default modules to force Spack always build with them (see docs above).
+    # Python with tkinter. Also explicitly enable many "default" modules to force Spack always build with them (see docs above).
     # Build & install it already here with --test=root, this errors out if a module (eg. tkinter) could not be built.
     # Otherwise it would silently continue without the said module. We don't do --test for the other packages in case they'd be expensive.
     cp {{ CONFIG_DIR }}/python_spack_package.py repos/spack_repo/builtin/packages/python/package.py
