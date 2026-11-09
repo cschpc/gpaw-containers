@@ -1,15 +1,19 @@
 # gpaw-containers
 
-Building the full thing:
-```bash
-export APPTAINER_CACHEDIR=$TMPDIR 
-apptainer build --fakeroot --bind="$TMPDIR:/tmp" gpaw_cpu.sif gpaw_cpu.def
-# On roihu-GPU:
-apptainer build --fakeroot --bind="$TMPDIR:/tmp" gpaw_gpu_base.sif gpaw_gpu_base.def
-apptainer build --fakeroot --bind="$TMPDIR:/tmp" gpaw_gpu.sif gpaw_gpu_pip.def
-```
+Build recipes for containerized GPAW installations for Roihu.
 
-Developing and testing a container .def in an interactive sandbox:
+## Build and test
+
+Use one of the batch job scripts to build the container(s):
+- [Roihu-CPU](roihu-cpu/build.job)
+- [Roihu-GPU](roihu-gpu/build.job)
+
+Alternatively, you can use <build_and_test.sh> to submit the build job and run GPAW test suite on it afterwards.
+Consider running it in a `tmux` session or similar.
+
+## Developing in a sandbox
+
+Developing and testing a container `.def` in an interactive sandbox:
 ```bash
 sinteractive -g --cores 16 --time 02:00:00
 export APPTAINER_CACHEDIR=$TMPDIR
