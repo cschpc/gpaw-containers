@@ -1,5 +1,3 @@
-# Installs some Python packages that are hard to get with Spack, and finally install GPAW
-
 Bootstrap: localimage
 From: gpaw_gpu_base.sif
 

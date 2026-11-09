@@ -59,22 +59,6 @@ From: gpaw_cpu_base.sif
     set +f
     ls {{ TYKKY_BIN_DIR }}
 
-    # "Patch" entrypoint Python scripts for ase, gpaw, pytest. These have the entry interpreter hardcoded in their bash shebang.
-    # We change it to always use python3 from /usr/bin/env so that the scripts work "as expected" in venvs that inherit
-    # these packages via --system-site-packages. Otherwise eg. "gpaw python" is different from "python -m gpaw python" in a venv,
-    # if GPAW hasn't explicitly been reinstalled in the venv.
-    # SHEBANG_PATCH_PATTERNS="ase gpaw* pytest"
-    # set -f
-    # for pattern in $SHEBANG_PATCH_PATTERNS; do
-    #     find "$_SPACK_GPAW_VIEW_DIR/bin" -maxdepth 1 -name "$pattern" | while read -r exe; do
-    #         first_line=$(head -n1 "$exe" 2>/dev/null) || continue
-    #         case "$first_line" in
-    #             "#!"*python*) sed -i '1s|^#!.*|#!/usr/bin/env python3|' "$exe" ;;
-    #         esac
-    #     done
-    # done
-    # set +f
-
 %environment
     . {{ ENV_SCRIPT }}
 

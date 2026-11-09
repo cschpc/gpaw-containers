@@ -94,9 +94,6 @@ EOF
     spack add python@{{ PYTHON_VER }} +optimizations +tkinter +pyexpat+ctypes+ssl+sqlite3+bz2+lzma+zstd+uuid+readline+dbm+curses ^tk+xft+xss
     spack install --log-format=junit --log-file=$LOG_DIR/install-python.log --show-log-on-error --fail-fast --test=root
 
-    # Get a safe version of py-certifi in case some dependency uses it during build
-    git checkout upstream/pinned -- repos/spack_repo/builtin/packages/py_certifi
-    spack add py-certifi
     spack add py-numpy@2.4
     spack add py-scipy@1.17
 
