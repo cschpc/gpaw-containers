@@ -9,7 +9,7 @@ Use one of the batch job scripts to build the container(s):
 - [Roihu-GPU](roihu-gpu/build.job)
 
 Alternatively, you can use [this script](build_and_test.sh) to submit the build job and run GPAW test suite on it afterwards.
-Consider running it in a `tmux` session or similar.
+You need to be on a CPU login node to use it for Roihu-CPU, and vice versa for GPU. Consider running it in a `tmux` session or similar.
 
 ## Developing in a sandbox
 
