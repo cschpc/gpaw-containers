@@ -1,9 +1,6 @@
 Bootstrap: localimage
 From: gpaw_gpu_base.sif
 
-%files
-    config/gpaw_gpu_siteconfig.py /opt/gpaw_deps_config/siteconfig.py
-
 %arguments
     BASEDIR=/gpaw_container
     CONFIG_DIR={{ BASEDIR }}/config
@@ -13,6 +10,10 @@ From: gpaw_gpu_base.sif
 
     GPAW_VERSION=26.7.0
     ASE_VERSION=3.29.0
+
+%files
+    # Copy siteconfig into the container. It can be useful for users too so keep it in a sensible location
+    config/gpaw_gpu_siteconfig.py {{ CONFIG_DIR }}/siteconfig.py
 
 %post
     . {{ ENV_SCRIPT }}
@@ -36,7 +37,7 @@ From: gpaw_gpu_base.sif
     python -m pip install ase=={{ ASE_VERSION }}
     cd /opt
     git clone --depth=1 -b {{ GPAW_VERSION }} https://gitlab.com/gpaw/gpaw.git
-    export GPAW_CONFIG=/opt/gpaw_deps_config/siteconfig.py
+    export GPAW_CONFIG={{ CONFIG_DIR }}/siteconfig.py
     cd gpaw
     # Seems to not install _gpaw .so into correct place if using makefile build. This needs FIXME on GPAW side
     python -m pip install -v . --no-build-isolation
