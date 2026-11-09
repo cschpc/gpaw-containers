@@ -21,26 +21,29 @@ From: gpaw_gpu_base.sif
     cd /opt
 
     python -m ensurepip
-    python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
     python -m pip install --upgrade certifi
     # Should be pip >= 26.2.2, certifi >= 2026.10.19
     python -m pip --version
     python -m pip list | grep certifi
 
-    python -m pip install pip setuptools packaging --upgrade
+    # Constrain numpy/pip versions
+    python -m pip list --format=freeze | grep -E '^(numpy|scipy)' | tee {{ CONFIG_DIR }}/constraints.txt
+    PIP_INSTALL="python -m pip install --constraint {{ CONFIG_DIR }}/constraints.txt"
+
+    $PIP_INSTALL pip setuptools packaging --upgrade
     # GPAW 26.7 tests have a bug that is incompatible with pytest >=9.1. Fixed in newer GPAW versions
-    python -m pip install pytest==9.0.3
-    python -m pip install pybind11==3.0.2 --upgrade
+    $PIP_INSTALL pytest==9.0.3
+    $PIP_INSTALL pybind11==3.0.2 --upgrade
 
-    python -m pip install cupy-cuda13x==14.1.1
+    $PIP_INSTALL cupy-cuda13x==14.1.1
 
-    python -m pip install ase=={{ ASE_VERSION }}
+    $PIP_INSTALL ase=={{ ASE_VERSION }}
     cd /opt
     git clone --depth=1 -b {{ GPAW_VERSION }} https://gitlab.com/gpaw/gpaw.git
     export GPAW_CONFIG={{ CONFIG_DIR }}/siteconfig.py
     cd gpaw
     # Seems to not install _gpaw .so into correct place if using makefile build. This needs FIXME on GPAW side
-    python -m pip install -v . --no-build-isolation
+    $PIP_INSTALL -v . --no-build-isolation
 
     cd /opt
     rm -rf gpaw

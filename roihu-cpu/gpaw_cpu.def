@@ -22,27 +22,34 @@ From: gpaw_cpu_base.sif
     # The following installs and upgrades Pypi packages directly in the Spack-managed site-packages location.
     # This should be OK as long as we don't use Spack for anything after this point!
 
-    # Ensure we use a safe version of pip and certifi. This is a patch for compromised eMudhra certificates,
+    # Ensure we use a safe version of pip and certifi (related to compromised eMudhra certificates). Mostly automatic now that we are on Python 3.14.10.
     # https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576.
-    # Can be removed in the future once ensurepip starts giving a safe version out of the box.
     python -m ensurepip
-    python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
     python -m pip install --upgrade certifi
     # Should be pip >= 26.2.2, certifi >= 2026.10.19
     python -m pip --version
     python -m pip list | grep certifi
 
-    python -m pip install pip setuptools packaging --upgrade
+    # Constrain Numpy and Scipy versions so pip doesn't "accidentally" override the "good" installs.
+    # Without a constaint it can happen that eg. ASE wants matplotlib and pip will lazily take the newest,
+    # even if it's not compatible with the current Numpy version. In which case pip will happily override the current Numpy.
+    # Store the constraint file in a sensible location so that users can make use of it too.
+    python -m pip list --format=freeze | grep -E '^(numpy|scipy)' | tee {{ CONFIG_DIR }}/constraints.txt
+
+    # Internal shorthand that applies the constraint:
+    PIP_INSTALL="python -m pip install --constraint {{ CONFIG_DIR }}/constraints.txt"
+
+    $PIP_INSTALL pip setuptools packaging --upgrade
     # GPAW 26.7 tests have a bug that is incompatible with pytest >=9.1. Fixed in newer GPAW versions
-    python -m pip install pytest==9.0.3
-    python -m pip install pybind11==3.0.2 --upgrade
-    python -m pip install ase=={{ ASE_VERSION }}
+    $PIP_INSTALL pytest==9.0.3
+    $PIP_INSTALL pybind11==3.0.2 --upgrade
+    $PIP_INSTALL ase=={{ ASE_VERSION }}
     cd /opt
     git clone --depth=1 -b {{ GPAW_VERSION }} https://gitlab.com/gpaw/gpaw.git
     export GPAW_CONFIG={{ CONFIG_DIR }}/siteconfig.py
     cd gpaw
     # Seems to not install _gpaw .so into correct place if using makefile build. This needs FIXME on GPAW side
-    python -m pip install -v . --no-build-isolation
+    $PIP_INSTALL -v . --no-build-isolation
 
     cd /opt
     rm -rf gpaw
